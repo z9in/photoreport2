@@ -19,7 +19,9 @@
             body { background: white; padding: 0; margin: 0; }
             .print-page { width: 100%; height: 260mm; page-break-after: always; box-sizing: border-box; }
             .print-page:last-child { page-break-after: avoid; }
-            input { border: none !important; background: transparent !important; box-shadow: none !important; }
+            
+            /* 인쇄 시 모든 입력창 양식 초기화 */
+            input { border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
         }
     </style>
 </head>
@@ -29,14 +31,14 @@
         <h1 class="text-2xl font-bold mb-6 text-center no-print">🏢 실시간 협업형 사진대장 시스템</h1>
         
         <div class="bg-blue-50 p-6 rounded-md border-2 border-blue-200 mb-8 no-print">
-            <h3 class="text-base font-bold text-blue-900 mb-4 text-center">👷 현장 사진 실시간 전송 (작업자용)</h3>
+            <h3 class="text-base font-bold text-blue-900 mb-4 text-center">官 현장 사진 실시간 전송 (작업자용)</h3>
             <form action="/" method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">1. 현장명 입력 (동일하게 맞춰주세요)</label>
-                    <input type="text" name="site_name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" value="도서관(S1동) 공사" required>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">1. 장소 및 공정 입력</label>
+                    <input type="text" name="process_name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" value="도서관(S1동) 출입통제시스템 신규 설치" required>
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">2. 구역/공정 타이틀 입력</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">2. 구역 입력</label>
                     <input type="text" name="section_name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" value="2. 공사 전 후 사진" required>
                 </div>
                 <div class="md:col-span-2">
@@ -50,28 +52,26 @@
         </div>
 
         <div class="bg-gray-50 p-4 rounded-md border border-gray-300 mb-8 no-print">
-            <h3 class="text-sm font-bold text-gray-700 mb-2">📊 등록된 현장 목록 (관리자 사진대장 출력용)</h3>
+            <h3 class="text-sm font-bold text-gray-700 mb-2">📊 등록된 장소 및 공정 목록 (관리자용)</h3>
             <div class="flex flex-wrap gap-2">
-                {% for site in sites %}
-                <a href="/view/{{ site }}" class="px-4 py-2 rounded text-sm font-medium transition {% if selected_site == site %} bg-amber-600 text-white {% else %} bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 {% endif %}">
-                    📍 {{ site }}
+                {% for proc in processes %}
+                <a href="/view/{{ proc }}" class="px-4 py-2 rounded text-sm font-medium transition {% if selected_process == proc %} bg-amber-600 text-white {% else %} bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 {% endif %}">
+                    📍 {{ proc }}
                 </a>
                 {% else %}
-                <p class="text-xs text-gray-400 p-2">현재 서버에 등록된 현장이 없습니다. 사진을 먼저 전송해 주세요.</p>
+                <p class="text-xs text-gray-400 p-2">현재 서버에 등록된 데이터가 없습니다. 사진을 먼저 전송해 주세요.</p>
                 {% endfor %}
             </div>
         </div>
 
         {% if section_photos %}
         <div class="flex justify-between items-center mb-6 no-print border-b pb-4">
-            <div class="flex items-center gap-2">
-                <h2 class="text-xl font-bold text-amber-900">📄 [{{ selected_site }}] 사진대지 미리보기</h2>
-            </div>
+            <h2 class="text-xl font-bold text-amber-900">📄 사진대지 미리보기</h2>
             <div class="flex items-center gap-3">
-                <form action="/clear/{{ selected_site }}" method="post" onsubmit="return confirm('이 현장의 모든 사진 데이터를 서버에서 영구 삭제하시겠습니까?');">
-                    <button type="submit" class="bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600 transition">🗑️ 이 현장 데이터 삭제</button>
+                <form action="/clear/{{ selected_process }}" method="post" onsubmit="return confirm('이 데이터들을 서버에서 영구 삭제하시겠습니까?');">
+                    <button type="submit" class="bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600 transition">🗑️ 이 데이터 삭제</button>
                 </form>
-                <button onclick="window.print()" class="bg-green-600 text-white px-5 py-2 rounded-md hover:bg-green-700 font-medium transition shadow-md">🖨️ 이 현장 일괄 PDF 출력</button>
+                <button onclick="window.print()" class="bg-green-600 text-white px-5 py-2 rounded-md hover:bg-green-700 font-medium transition shadow-md">🖨️ 일괄 PDF 출력</button>
             </div>
         </div>
 
@@ -81,11 +81,12 @@
                 <div class="print-page mb-12 print:m-0">
                     
                     <div style="text-align: center; margin-bottom: 2px;">
-                        <input type="text" class="w-full text-center text-xl font-bold border-b border-gray-200 py-1 focus:outline-none" style="font-family:'Malgun Gothic'; font-size: 20px;" value="{{ selected_site }} 준공사진대지">
+                        <input type="text" class="w-full text-center text-xl font-bold border-b border-gray-200 py-1 focus:outline-none focus:border-blue-400 text-gray-900" style="font-family:'Malgun Gothic'; font-size: 20px;" value="{{ selected_process }} 준공사진대지">
                     </div>
 
-                    <div class="mt-2 mb-1 text-left">
-                        <span class="text-amber-800 text-base font-bold border-l-4 border-amber-800 pl-2">{{ section_name }}</span>
+                    <div class="mt-2 mb-1 text-left flex items-center">
+                        <span class="text-amber-800 text-base font-bold pl-1 no-print">▶</span>
+                        <input type="text" class="w-full text-left text-base font-bold text-amber-800 focus:outline-none focus:bg-amber-50 rounded px-1 py-0.5" style="font-family:'Malgun Gothic';" value="{{ section_name }}">
                     </div>
 
                     <table class="report-table">
@@ -108,7 +109,6 @@
                         </tr>
                         {% endfor %}
                     </table>
-                </table>
                 </div>
                 {% endfor %}
             {% endfor %}
