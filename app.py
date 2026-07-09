@@ -1,12 +1,18 @@
 import os
 import glob
 from flask import Flask, render_template, request, redirect, url_for
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
 BASE_UPLOAD_FOLDER = os.path.join('static', 'shared_uploads')
 if not os.path.exists(BASE_UPLOAD_FOLDER):
     os.makedirs(BASE_UPLOAD_FOLDER)
+
+def make_safe_name(name):
+    keepcharacters = (' ', '.', '_', '-')
+    safe_name = "".join(c for c in name if c.isalnum() or c in keepcharacters).strip()
+    return safe_name if safe_name else "unnamed"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -15,28 +21,25 @@ def index():
             return redirect(request.url)
         
         files = request.files.getlist('photos')
-        site_name = request.form.get('site_name', '기본현장').strip()
-        section_name = request.form.get('section_name', '기본구역').strip()
-        process_name = request.form.get('process_name', '기본공정').strip()
+        site_name = make_safe_name(request.form.get('site_name', '기본현장'))
+        section_name = make_safe_name(request.form.get('section_name', '기본구역'))
+        process_name = make_safe_name(request.form.get('process_name', '기본공정'))
         
-        # 물리적인 폴더 구조는 [현장 명] -> [구역 명] 구조로 생성합니다.
         target_folder = os.path.join(BASE_UPLOAD_FOLDER, site_name, section_name)
         if not os.path.exists(target_folder):
             os.makedirs(target_folder)
 
-        # 사용자가 지정한 '장소 및 공정 명'을 기반으로 파일명을 강제 지정하여 저장합니다.
         for index, file in enumerate(files):
             if file.filename == '':
                 continue
             if file:
-                ext = os.path.splitext(file.filename)[1].lower() # 확장자 추출 (.jpg, .png 등)
+                ext = os.path.splitext(secure_filename(file.filename))[1].lower()
+                if not ext:
+                    ext = '.jpg'
                 
-                # 동일한 공정명으로 여러 장이 올라왔을 때 덮어쓰기 방지를 위한 넘버링 처리
-                # 예: 도서관복도_1.jpg, 도서관복도_2.jpg
                 if len(files) > 1:
                     new_filename = f"{process_name}_{index + 1}{ext}"
                 else:
-                    # 한 장만 올렸을 때도 기존 파일이 있으면 번호 부여
                     base_path = os.path.join(target_folder, f"{process_name}{ext}")
                     if os.path.exists(base_path):
                         new_filename = f"{process_name}_{index + 1}{ext}"
@@ -48,18 +51,16 @@ def index():
                 
         return redirect(url_for('index'))
 
-    # 현재 서버에 등록된 모든 [현장 명] 목록 읽어오기
     sites = []
     if os.path.exists(BASE_UPLOAD_FOLDER):
         sites = [d for d in os.listdir(BASE_UPLOAD_FOLDER) if os.path.isdir(os.path.join(BASE_UPLOAD_FOLDER, d))]
 
     return render_template('index.html', sites=sites, selected_site=None, section_photos=None)
 
-
 @app.route('/view/<path:site_name>')
 def view_site(site_name):
-    """선택한 현장 명의 모든 구역과 사진을 일괄 로드"""
-    site_path = os.path.join(BASE_UPLOAD_FOLDER, site_name)
+    safe_site_name = make_safe_name(site_name)
+    site_path = os.path.join(BASE_UPLOAD_FOLDER, safe_site_name)
     section_photos = {}
 
     if os.path.exists(site_path):
@@ -80,14 +81,13 @@ def view_site(site_name):
                     })
 
     sites = [d for d in os.listdir(BASE_UPLOAD_FOLDER) if os.path.isdir(os.path.join(BASE_UPLOAD_FOLDER, d))]
-    return render_template('index.html', sites=sites, selected_site=site_name, section_photos=section_photos)
-
+    return render_template('index.html', sites=sites, selected_site=safe_site_name, section_photos=section_photos)
 
 @app.route('/clear/<path:site_name>', methods=['POST'])
 def clear_site(site_name):
-    """해당 현장 데이터 서버에서 영구 삭제"""
     import shutil
-    site_path = os.path.join(BASE_UPLOAD_FOLDER, site_name)
+    safe_site_name = make_safe_name(site_name)
+    site_path = os.path.join(BASE_UPLOAD_FOLDER, safe_site_name)
     if os.path.exists(site_path):
         shutil.rmtree(site_path)
     return redirect(url_for('index'))
