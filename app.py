@@ -37,14 +37,17 @@ def index():
                 if not ext:
                     ext = '.jpg'
                 
-                if len(files) > 1:
-                    new_filename = f"{process_name}_{index + 1}{ext}"
+                base_path = os.path.join(target_folder, f"{process_name}{ext}")
+                
+                if len(files) > 1 or os.path.exists(base_path):
+                    counter = index + 1
+                    while True:
+                        new_filename = f"{process_name}_{counter}{ext}"
+                        if not os.path.exists(os.path.join(target_folder, new_filename)):
+                            break
+                        counter += 1
                 else:
-                    base_path = os.path.join(target_folder, f"{process_name}{ext}")
-                    if os.path.exists(base_path):
-                        new_filename = f"{process_name}_{index + 1}{ext}"
-                    else:
-                        new_filename = f"{process_name}{ext}"
+                    new_filename = f"{process_name}{ext}"
                 
                 filepath = os.path.join(target_folder, new_filename)
                 file.save(filepath)
@@ -67,18 +70,25 @@ def view_site(site_name):
         sections = [d for d in os.listdir(site_path) if os.path.isdir(os.path.join(site_path, d))]
         
         for sec in sections:
-            section_photos[sec] = []
             sec_path = os.path.join(site_path, sec)
+            all_files = []
+            
             for ext in ('*.jpg', '*.jpeg', '*.png', '*.GIF', '*.JPG', '*.JPEG', '*.PNG'):
-                for file_p in glob.glob(os.path.join(sec_path, ext)):
-                    filename = os.path.basename(file_p)
-                    photo_name = os.path.splitext(filename)[0]
-                    web_url = '/' + file_p.replace('\\', '/')
-                    
-                    section_photos[sec].append({
-                        'url': web_url,
-                        'name': photo_name
-                    })
+                all_files.extend(glob.glob(os.path.join(sec_path, ext)))
+            
+            # ★ 업로드된 물리적 시간(수정 시간) 기준으로 오름차순 정렬
+            all_files.sort(key=os.path.getmtime)
+            
+            section_photos[sec] = []
+            for file_p in all_files:
+                filename = os.path.basename(file_p)
+                photo_name = os.path.splitext(filename)[0]
+                web_url = '/' + file_p.replace('\\', '/')
+                
+                section_photos[sec].append({
+                    'url': web_url,
+                    'name': photo_name
+                })
 
     sites = [d for d in os.listdir(BASE_UPLOAD_FOLDER) if os.path.isdir(os.path.join(BASE_UPLOAD_FOLDER, d))]
     return render_template('index.html', sites=sites, selected_site=safe_site_name, section_photos=section_photos)
